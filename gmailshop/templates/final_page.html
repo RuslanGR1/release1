@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block content %}
+Final page
+    <hr>
+<p>Количество: {{ count }}</p>
+<p>К оплате:   {{ summ }}</p>
+<p>Кошелек:    {{ num }}</p>
+<p>Примечание: {{ comment }}</p>
+<a href="{{ qiwi_url }}" target="_blank">Оплатить</a>
+<br>
+{% if btn_s %}
+<form action="" method="POST">
+    {% csrf_token %}
+    <input type="submit" value="Проверить">
+</form>
+{% endif %}
+<hr>
+{{ str }}
+{% if st %}
+    <a href="{{ download_url }}">Ссылка на скачиваение</a>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+First form
+    <hr>
+    <p>type: {{ type }}</p>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Отправить">
+    </form>
+    {{ warning }}
+{% endblock %}
