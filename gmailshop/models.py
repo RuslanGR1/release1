@@ -1,7 +1,7 @@
 from django.db import models
 
 
-class Gmailt1(models.Model):
+class gmailt1(models.Model):
     login = models.CharField(max_length=20)
     password = models.CharField(max_length=20)
 
@@ -12,7 +12,7 @@ class Gmailt1(models.Model):
         return '{}:{}\r\n'.format(self.login, self.password)
 
 
-class Gmailt2(models.Model):
+class gmailt2(models.Model):
     login = models.CharField(max_length=20)
     password = models.CharField(max_length=20)
 
@@ -23,7 +23,7 @@ class Gmailt2(models.Model):
         return '{}:{}\r\n'.format(self.login, self.password)
 
 
-class Gmailt3(models.Model):
+class gmailt3(models.Model):
     login = models.CharField(max_length=20)
     password = models.CharField(max_length=20)
 

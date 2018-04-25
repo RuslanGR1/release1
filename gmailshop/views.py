@@ -3,7 +3,7 @@ from django.http import HttpResponse, Http404
 from django.db import transaction, IntegrityError
 from django.views.generic import View
 
-from .models import Gmailt1, Gmailt2, Gmailt3
+from .models import gmailt1, gmailt2, gmailt3
 from .forms import FirstForm
 
 import requests
@@ -45,9 +45,9 @@ status = False  # Принята ли оплата
 global_data = {}
 
 test_types = [
-    ['t1', '12.0', Gmailt1.objects.count()],
-    ['t2', '8.0', Gmailt2.objects.count()],
-    ['t3', '0.1', Gmailt3.objects.count()]
+    ['t1', '12.0', gmailt1.objects.count()],
+    ['t2', '8.0', gmailt2.objects.count()],
+    ['t3', '0.1', gmailt3.objects.count()]
 ]
 test_types2 = [
     ['t1', '12.0'],
@@ -55,9 +55,9 @@ test_types2 = [
     ['t3', '0.1']
 ]
 gmails = {
-    't1': Gmailt1,
-    't2': Gmailt2,
-    't3': Gmailt3
+    't1': gmailt1,
+    't2': gmailt2,
+    't3': gmailt3
 }
 types = {
     't1': '12.0',
@@ -82,7 +82,7 @@ def check_status(h):
     print('global ', gl_sum, gl_comment)
 class Index(View):
     def get(self, request):
-        cnt1, cnt2, cnt3 = Gmailt1.objects.count(), Gmailt2.objects.count(), Gmailt3.objects.count()
+        cnt1, cnt2, cnt3 = gmailt1.objects.count(), gmailt2.objects.count(), gmailt3.objects.count()
         type1, type2, type3 = types.values()
         return render(request, 'main_page.html', locals())
 class First_form(View):
