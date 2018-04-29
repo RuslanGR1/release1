@@ -1,0 +1,189 @@
+
+from django.shortcuts import render, redirect
+from django.http import HttpResponse, Http404
+from django.db import transaction, IntegrityError
+from django.views.generic import View
+
+from .models import gmailt1, gmailt2, gmailt3
+from .forms import FirstForm
+
+import requests
+import string
+import random
+
+base_num = r'+79874229660'
+token = r'2a5a783be010956295b2b0cfdaa28b09'  # simsms API Token
+
+# region help functions
+def history(rows=10):
+    """Returns payment history (json)"""
+    s = requests.Session()
+    s.headers['authorization'] = 'Bearer ' + token
+    s.headers['Accept'] = 'application/json'
+    s.headers['Content-Type'] = 'application/json'
+
+    parameters = {'rows': str(rows)}
+    h = s.get('https://edge.qiwi.com/payment-history/v1/persons/' + base_num + '/payments', params=parameters).json()
+    return h
+def generator(size=8, chars=string.ascii_letters + string.digits):
+    return ''.join(random.choice(chars) for _ in range(size))
+def qiwi_balance():
+    """Return balance"""
+    url = "https://edge.qiwi.com/funding-sources/v1/accounts/current"
+    s = requests.Session()
+
+    s.headers['authorization'] = 'Bearer ' + token
+    s.headers['Accept'] = 'application/json'
+    s.headers['Content-Type'] = 'application/json'
+
+    return s.get(url).json()['accounts'][-1]['balance']['amount']
+# endregion
+
+generated_txt_url = ''
+
+btn_status = True  # Нужно ли отображать кнопку, исчезает после подтверждения оплаты
+status = False  # Принята ли оплата
+global_data = {}
+
+test_types = [
+    ['t1', '12.0', gmailt1.objects.count()],
+    ['t2', '8.0', gmailt2.objects.count()],
+    ['t3', '0.1', gmailt3.objects.count()]
+]
+test_types2 = [
+    ['t1', '12.0'],
+    ['t2', '8.0'],
+    ['t3', '0.1']
+]
+gmails = {
+    't1': gmailt1,
+    't2': gmailt2,
+    't3': gmailt3
+}
+types = {
+    't1': '12.0',
+    't2': '20.0',
+    't3': '0.1',
+}
+
+def check_status(h):
+    global status, btn_status
+    dt = global_data
+    gl_sum, gl_comment = float(dt['count']) * float(types[dt['type']]), dt['comment']
+
+    for i in h['data'][::-1]:
+        print('local ', i['sum']['amount'], i['comment'])
+        if gl_comment == i['comment']:
+            if float(i['sum']['amount']) == gl_sum and str(i['sum']['currency']) == '643':
+                print('Платеж подтвержден')
+                status = True
+                btn_status = False
+    if status:
+        print('True')
+    print('global ', gl_sum, gl_comment)
+class Index(View):
+    def get(self, request):
+        cnt1, cnt2, cnt3 = gmailt1.objects.count(), gmailt2.objects.count(), gmailt3.objects.count()
+        type1, type2, type3 = types.values()
+        return render(request, 'main_page.html', locals())
+class First_form(View):
+    form_class = FirstForm
+    template_name = 'first_form.html'
+    warning = ''
+
+    def get(self, request, type):
+        form = self.form_class
+        return render(request, self.template_name, {'form': form, 'warning': self.warning})
+    def post(self, request, type):
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            if float(data['count']) > gmails[type].objects.count():
+                self.warning = 'Wrong count'
+            else:
+                comment = generator(size=8, chars=string.digits)
+                global global_data
+                global_data.update({'email': data['email'], 'count': float(data['count']),
+                                    'num': base_num, 'comment': comment, 'type': type})
+                return redirect('http://127.0.0.1:8000/gmail&{}'.format(generator(25)))
+        else:
+            form = self.form_class
+            return render(request, self.template_name, {'form': form, 'warning': self.warning})
+
+def index(request):
+    res = []
+    test_arr = test_types
+    for i, j in test_types2:
+        res += [[i, j, str(gmails[i].objects.count())]]
+
+    return render(request, 'main_page.html', locals())
+
+
+def first_form(request, type):
+    warning = ''
+    form = FirstForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        if float(data['count']) > gmails[type].objects.count():
+            warning = 'Wrong count'
+        else:
+            comment = generator(size=8, chars=string.digits)
+            global global_data
+            global_data.update({'email': data['email'], 'count': float(data['count']),
+                                'num': base_num, 'comment': comment, 'type': type})
+            return redirect('http://127.0.0.1:8000/gmail&{}'.format(generator(25)))
+    else:
+        form = FirstForm
+    return render(request, 'first_form.html', locals())
+
+
+def final_page(request, why):
+    global btn_status, generated_txt_url
+    btn_s = btn_status
+    if request.method == 'POST':
+        check_status(history())
+    dt = global_data
+    email, count, num, summ, comment = dt['email'], dt['count'], base_num, \
+                                       float(dt['count']) * float(types[dt['type']]), dt['comment']
+    qiwi_url = 'https://qiwi.com/payment/form/99?amountFraction=0&currency=RUB&extra%5B%27account%27%5D={}' \
+               '&extra%5B%27comment%27%5D={}&amountInteger={}'.format(num, comment, summ)
+    st = status
+    download_url = ''
+    if status:
+        str = 'Платеж подтвержден'
+        generated_txt_url = generator(size=20)
+        download_url = 'http://127.0.0.1:8000/gmail&{}/{}'.format(dt['type'],generated_txt_url)
+        btn_status = False
+    else:
+        str = 'Платеж не подтвержден'
+    return render(request, 'final_page.html', locals())
+
+
+def txt_download(request, type, url):
+    global global_data
+    try:
+        if url == generated_txt_url and global_data['count'] != 0:
+            filename = 'accounts_{}.txt'.format(generator(size=15))
+
+            cnt = int(global_data['count'])
+
+            if gmails[type].objects.count() < cnt:
+                raise Http404("Wrong count")
+            content = ''
+            for i in range(cnt):
+                try:
+                    with transaction.atomic():
+                        obj = gmails[type].objects.last()
+                        content += gmails[type].my_str(obj)
+                        gmails[type].delete(obj)
+                except IntegrityError:
+                    print('Хз, тут смотреть надо...')
+
+            response = HttpResponse(content, content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename={0}'.format(filename)
+            global_data['count'] = 0
+            return response
+        else:
+            raise Http404("Wrong url")
+    except:
+        raise Http404("No, dude, enough.")
