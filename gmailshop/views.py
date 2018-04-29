@@ -1,7 +1,6 @@
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, Http404
 from django.db import transaction, IntegrityError
-from django.views.generic import View
 
 from .models import gmailt1, gmailt2, gmailt3
 from .forms import FirstForm
@@ -65,6 +64,7 @@ types = {
     't3': '0.1',
 }
 
+
 def check_status(h):
     global status, btn_status
     dt = global_data
@@ -80,34 +80,7 @@ def check_status(h):
     if status:
         print('True')
     print('global ', gl_sum, gl_comment)
-class Index(View):
-    def get(self, request):
-        cnt1, cnt2, cnt3 = gmailt1.objects.count(), gmailt2.objects.count(), gmailt3.objects.count()
-        type1, type2, type3 = types.values()
-        return render(request, 'main_page.html', locals())
-class First_form(View):
-    form_class = FirstForm
-    template_name = 'first_form.html'
-    warning = ''
 
-    def get(self, request, type):
-        form = self.form_class
-        return render(request, self.template_name, {'form': form, 'warning': self.warning})
-    def post(self, request, type):
-        form = self.form_class(request.POST)
-        if form.is_valid():
-            data = form.cleaned_data
-            if float(data['count']) > gmails[type].objects.count():
-                self.warning = 'Wrong count'
-            else:
-                comment = generator(size=8, chars=string.digits)
-                global global_data
-                global_data.update({'email': data['email'], 'count': float(data['count']),
-                                    'num': base_num, 'comment': comment, 'type': type})
-                return redirect('http://127.0.0.1:8000/gmail&{}'.format(generator(25)))
-        else:
-            form = self.form_class
-            return render(request, self.template_name, {'form': form, 'warning': self.warning})
 
 def index(request):
     res = []
@@ -130,7 +103,7 @@ def first_form(request, type):
             global global_data
             global_data.update({'email': data['email'], 'count': float(data['count']),
                                 'num': base_num, 'comment': comment, 'type': type})
-            return redirect('http://127.0.0.1:8000/gmail&{}'.format(generator(25)))
+            return redirect('/gmail&{}'.format(generator(25)))
     else:
         form = FirstForm
     return render(request, 'first_form.html', locals())
@@ -151,7 +124,7 @@ def final_page(request, why):
     if status:
         str = 'Платеж подтвержден'
         generated_txt_url = generator(size=20)
-        download_url = 'http://127.0.0.1:8000/gmail&{}/{}'.format(dt['type'],generated_txt_url)
+        download_url = '/gmail&{}/{}'.format(dt['type'], generated_txt_url)
         btn_status = False
     else:
         str = 'Платеж не подтвержден'
